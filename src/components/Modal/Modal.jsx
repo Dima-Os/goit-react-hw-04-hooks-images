@@ -1,37 +1,35 @@
 import { createPortal } from 'react-dom';
-import React, { Component } from 'react';
+import { useEffect } from 'react';
+
+import PropTypes from 'prop-types';
 
 import s from './Modal.module.css';
 
 const modalRoot = document.querySelector('#modal-root');
 
-class Modal extends Component {
-  componentDidMount() {
-    document.addEventListener('keydown', this.closeModal);
-  }
-  componentWillUnmount() {
-    document.removeEventListener('keydown', this.closeModal);
-  }
-  closeModal = e => {
-    if (e.code === 'Escape') {
-      this.props.togleModal();
-    }
+export default function Modal({ URL, togleModal }) {
+  useEffect(() => {
+    document.addEventListener('keydown', closeModal);
+    return () => {
+      document.removeEventListener('keydown', closeModal);
+    };
+  });
+  const closeModal = e => {
+    if (e.code === 'Escape') togleModal();
   };
-  onBackDropClick = e => {
-    if (e.target === e.currentTarget) {
-      this.props.togleModal();
-    }
+  const onBackDropClick = e => {
+    if (e.target === e.currentTarget) togleModal();
   };
-  render() {
-    return createPortal(
-      <div className={s.overlay} onClick={this.onBackDropClick}>
-        <div className={s.modal}>
-          <img src={this.props.URL} alt="" />
-        </div>
-      </div>,
-      modalRoot,
-    );
-  }
+  return createPortal(
+    <div className={s.overlay} onClick={onBackDropClick}>
+      <div className={s.modal}>
+        <img src={URL} alt="" />
+      </div>
+    </div>,
+    modalRoot,
+  );
 }
-
-export default Modal;
+Modal.propTypes = {
+  URL: PropTypes.string.isRequired,
+  togleModal: PropTypes.func.isRequired,
+};
