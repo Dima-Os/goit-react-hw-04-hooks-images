@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 
 import s from './App.module.css';
 
@@ -10,87 +10,82 @@ import imageFinderAPI from './services/imageFinderAPI';
 import PuffLoader from './components/Loader';
 import Button from './components/Button';
 
-export default class App extends Component {
-  state = {
-    userQuery: '',
-    images: [],
-    currentPage: 1,
-    error: null,
-    showModal: false,
-    largeImageURL: '',
-    isLoading: false,
+export default function App() {
+  const [userQuery, setUserQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const getUserQuery = userInput => {
+    setUserQuery(userInput);
+    setImages('');
+    setCurrentPage(1);
+    setError(null);
   };
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.userQuery !== this.state.userQuery) {
-      this.fetchImages();
+  const onClickImage = largeImageURL => {
+    setShowModal(prevState => !prevState);
+    setLargeImageURL(largeImageURL);
+  };
+
+  useEffect(() => {
+    if (userQuery === '') {
+      return;
     }
-  }
-  fetchImages = () => {
-    this.setState({ isLoading: true });
-    imageFinderAPI
-      .getImages(this.state.userQuery, this.state.currentPage)
-      .then(({ hits, total }) => {
-        if (total === 0) {
-          throw new Error(
-            `По запросу ${this.state.userQuery} ничего не найдено!`,
-          );
-        }
-        this.setState(prevState => ({
-          images: [...prevState.images, ...hits],
-        }));
-        window.scrollTo({
-          top: document.documentElement.offsetHeight,
-          behavior: 'smooth',
-        });
-        this.setState(prevState => ({
-          currentPage: prevState.currentPage + 1,
-        }));
-      })
-      .catch(error => this.setState({ error: error.message }))
-      .finally(this.setState({ isLoading: false }));
-  };
-  getUserQuery = userInput => {
-    this.setState({
-      userQuery: userInput,
-      images: [],
-      currentPage: 1,
-      error: null,
-    });
-  };
-  onClickImage = largeImageURL => {
-    this.togleModal();
-    this.setState({ largeImageURL: largeImageURL });
-  };
-  togleModal = () => {
-    this.setState(prevState => ({
-      showModal: !prevState.showModal,
-    }));
-  };
-  render() {
-    return (
-      <div className={s.App}>
-        <Searchbar onSubmitHandler={this.getUserQuery} />
-        {this.state.isLoading && <PuffLoader />}
-        {this.state.error && <h1>{this.state.error}</h1>}
-        {this.state.images.length > 0 && (
-          <ImageGallery>
-            {this.state.images.map(image => (
-              <ImageGalleryItem
-                key={image.id}
-                webformatURL={image.webformatURL}
-                largeImageURL={image.largeImageURL}
-                onCLick={this.onClickImage}
-              />
-            ))}
-          </ImageGallery>
-        )}
-        {this.state.showModal && (
-          <Modal URL={this.state.largeImageURL} togleModal={this.togleModal} />
-        )}
-        {this.state.images.length > 0 && (
-          <Button onClickHandler={this.fetchImages} />
-        )}
-      </div>
-    );
-  }
+    setIsLoading(true);
+    const fetchImages = () => {
+      imageFinderAPI
+        .getImages(userQuery, currentPage)
+        .then(({ hits, total }) => {
+          if (total === 0) {
+            throw new Error(`По запросу ${userQuery} ничего не найдено!`);
+          }
+          setImages(prevImg => [...prevImg, ...hits]);
+          window.scrollTo({
+            top: document.documentElement.offsetHeight,
+            behavior: 'smooth',
+          });
+        })
+        .catch(error => setError(error.message))
+        .finally(setIsLoading(false));
+    };
+    fetchImages();
+  }, [userQuery, currentPage]);
+
+  return (
+    <div className={s.App}>
+      <Searchbar onSubmitHandler={getUserQuery} />
+      {isLoading && <PuffLoader />}
+      {error && <h1>{error}</h1>}
+      {images.length > 0 && (
+        <ImageGallery>
+          {images.map(image => (
+            <ImageGalleryItem
+              key={image.id}
+              webformatURL={image.webformatURL}
+              largeImageURL={image.largeImageURL}
+              onCLick={onClickImage}
+            />
+          ))}
+        </ImageGallery>
+      )}
+      {showModal && (
+        <Modal
+          URL={largeImageURL}
+          togleModal={() => {
+            setShowModal(prevState => !prevState);
+          }}
+        />
+      )}
+      {images.length > 0 && (
+        <Button
+          onClickHandler={() => {
+            setCurrentPage(prevPage => prevPage + 1);
+          }}
+        />
+      )}
+    </div>
+  );
 }
